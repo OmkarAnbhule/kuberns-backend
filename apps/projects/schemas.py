@@ -21,6 +21,8 @@ class PlanSchema(BaseModel):
     ram_mb: int
     bandwidth_gb: int
     price_monthly: float
+    price_hourly: float
+    storage_gb: int
 
     class Config:
         from_attributes = True
