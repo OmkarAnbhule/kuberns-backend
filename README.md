@@ -65,10 +65,52 @@ Visit `http://localhost:8000/api/docs` for interactive API documentation.
 
 ## Development
 
-- All models use encrypted fields for sensitive data
-- API uses django-ninja with Pydantic schemas
-- AWS provisioning is mocked by default (set `mock_mode = False` to use real AWS)
-- Database uses SQLite by default (configure PostgreSQL for production)
+- **Async APIs**: All endpoints are async for better performance and concurrency
+- **JWT Authentication**: Uses django-ninja-jwt for secure token-based auth
+- **Encrypted Fields**: All sensitive data uses encrypted model fields
+- **Modern HTTP Client**: Uses httpx for async HTTP requests to external APIs
+- **API Documentation**: Interactive docs with Pydantic schemas
+- **AWS Integration**: Provisioning is mocked by default (set `mock_mode = False` for real AWS)
+- **Database**: SQLite for local, PostgreSQL for production
+
+## GitHub OAuth Setup
+
+1. **Create GitHub OAuth App**:
+   - Go to https://github.com/settings/applications/new
+   - Set Application name: `Kuberns`
+   - Set Homepage URL: `http://localhost:3000`
+   - Set Authorization callback URL: `http://localhost:3000/auth/github/callback`
+   - Copy Client ID and Client Secret
+
+2. **Configure Environment Variables**:
+   ```bash
+   GITHUB_CLIENT_ID=your_github_client_id
+   GITHUB_CLIENT_SECRET=your_github_client_secret
+   GITHUB_REDIRECT_URI=http://localhost:3000/auth/github/callback
+   ```
+
+## API Endpoints
+
+### JWT Authentication (django-ninja-jwt)
+- `POST /api/token/pair` - Get access/refresh token pair
+- `POST /api/token/refresh` - Refresh access token
+- `POST /api/token/verify` - Verify token validity
+
+### GitHub Authentication (Async)
+- `GET /api/accounts/auth/github/url` - Get GitHub OAuth URL
+- `POST /api/accounts/auth/github/login` - Login with GitHub code (returns JWT tokens)
+- `POST /api/accounts/auth/refresh` - Refresh JWT access token
+
+### User Management (Async + JWT Auth)
+- `GET /api/accounts/me` - Get current user (requires JWT Bearer token)
+
+### Authentication Headers
+```bash
+# Use JWT Bearer token for authenticated requests
+Authorization: Bearer <your_access_token>
+```
+
+Visit `http://localhost:8000/api/docs` for complete interactive API documentation.
 
 ## TODO
 

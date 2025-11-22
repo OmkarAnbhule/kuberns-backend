@@ -1,8 +1,12 @@
 Django>=4.2
 django-ninja
 django-ninja-extra
+django-ninja-jwt
 django-encrypted-model-fields
 boto3
 django-cors-headers
 python-dotenv
 psycopg2-binary
+dj-database-url
+requests
+httpx

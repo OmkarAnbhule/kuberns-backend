@@ -1,15 +1,15 @@
 """
-AWS provisioning utilities using boto3.
+AWS provisioning utilities using aioboto3 for async operations.
 
 TODO: Implement actual AWS EC2 provisioning logic
 """
 
-import boto3
+import aioboto3
 from typing import Dict, Optional
 from django.conf import settings
 
 
-def provision_ec2(
+async def provision_ec2_async(
     aws_access_key: str,
     aws_secret_key: str,
     region: str,
@@ -18,10 +18,10 @@ def provision_ec2(
     key_name: Optional[str] = None
 ) -> Dict:
     """
-    Provision an EC2 instance using boto3.
+    Async provision an EC2 instance using aioboto3.
     
     TODO: Implement full provisioning logic:
-    1. Create boto3 EC2 client with credentials
+    1. Create aioboto3 EC2 client with credentials
     2. Select appropriate AMI if not provided
     3. Create security group with proper rules
     4. Launch EC2 instance with run_instances()
@@ -44,56 +44,55 @@ def provision_ec2(
         Exception: If provisioning fails
     """
     
-    # TODO: Implement actual boto3 logic
+    # TODO: Implement actual aioboto3 logic
     # Example pseudocode:
     
-    # # Create EC2 client
-    # ec2_client = boto3.client(
+    # session = aioboto3.Session()
+    # async with session.client(
     #     'ec2',
     #     aws_access_key_id=aws_access_key,
     #     aws_secret_access_key=aws_secret_key,
     #     region_name=region
-    # )
-    
-    # # Get default AMI if not provided
-    # if not ami:
-    #     ami = get_default_ubuntu_ami(ec2_client)
-    
-    # # Create or get security group
-    # security_group_id = ensure_security_group(ec2_client)
-    
-    # # Launch instance
-    # response = ec2_client.run_instances(
-    #     ImageId=ami,
-    #     MinCount=1,
-    #     MaxCount=1,
-    #     InstanceType=instance_type,
-    #     KeyName=key_name,
-    #     SecurityGroupIds=[security_group_id],
-    #     TagSpecifications=[{
-    #         'ResourceType': 'instance',
-    #         'Tags': [
-    #             {'Key': 'Name', 'Value': f'kuberns-{project_name}'},
-    #             {'Key': 'Project', 'Value': project_name}
-    #         ]
-    #     }]
-    # )
-    
-    # instance_id = response['Instances'][0]['InstanceId']
-    
-    # # Wait for instance to be running
-    # waiter = ec2_client.get_waiter('instance_running')
-    # waiter.wait(InstanceIds=[instance_id])
-    
-    # # Get instance details
-    # instances = ec2_client.describe_instances(InstanceIds=[instance_id])
-    # instance = instances['Reservations'][0]['Instances'][0]
-    
-    # return {
-    #     'instance_id': instance_id,
-    #     'public_ip': instance.get('PublicIpAddress'),
-    #     'status': instance['State']['Name']
-    # }
+    # ) as ec2_client:
+    #     # Get default AMI if not provided
+    #     if not ami:
+    #         ami = await get_default_ubuntu_ami_async(ec2_client)
+    #     
+    #     # Create or get security group
+    #     security_group_id = await ensure_security_group_async(ec2_client)
+    #     
+    #     # Launch instance
+    #     response = await ec2_client.run_instances(
+    #         ImageId=ami,
+    #         MinCount=1,
+    #         MaxCount=1,
+    #         InstanceType=instance_type,
+    #         KeyName=key_name,
+    #         SecurityGroupIds=[security_group_id],
+    #         TagSpecifications=[{
+    #             'ResourceType': 'instance',
+    #             'Tags': [
+    #                 {'Key': 'Name', 'Value': f'kuberns-{project_name}'},
+    #                 {'Key': 'Project', 'Value': project_name}
+    #             ]
+    #         }]
+    #     )
+    #     
+    #     instance_id = response['Instances'][0]['InstanceId']
+    #     
+    #     # Wait for instance to be running
+    #     waiter = ec2_client.get_waiter('instance_running')
+    #     await waiter.wait(InstanceIds=[instance_id])
+    #     
+    #     # Get instance details
+    #     instances = await ec2_client.describe_instances(InstanceIds=[instance_id])
+    #     instance = instances['Reservations'][0]['Instances'][0]
+    #     
+    #     return {
+    #         'instance_id': instance_id,
+    #         'public_ip': instance.get('PublicIpAddress'),
+    #         'status': instance['State']['Name']
+    #     }
     
     # Placeholder return for development
     return {
@@ -103,13 +102,13 @@ def provision_ec2(
     }
 
 
-def get_default_ubuntu_ami(ec2_client) -> str:
+async def get_default_ubuntu_ami_async(ec2_client) -> str:
     """
-    Get the latest Ubuntu 22.04 LTS AMI ID for the region.
+    Async get the latest Ubuntu 22.04 LTS AMI ID for the region.
     
     TODO: Implement AMI lookup logic
     """
-    # response = ec2_client.describe_images(
+    # response = await ec2_client.describe_images(
     #     Filters=[
     #         {'Name': 'name', 'Values': ['ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*']},
     #         {'Name': 'owner-id', 'Values': ['099720109477']},  # Canonical
@@ -125,9 +124,9 @@ def get_default_ubuntu_ami(ec2_client) -> str:
     return "ami-placeholder"
 
 
-def ensure_security_group(ec2_client, group_name: str = "kuberns-default") -> str:
+async def ensure_security_group_async(ec2_client, group_name: str = "kuberns-default") -> str:
     """
-    Create or get existing security group with proper rules.
+    Async create or get existing security group with proper rules.
     
     TODO: Implement security group management
     - Allow SSH (port 22)
@@ -136,11 +135,11 @@ def ensure_security_group(ec2_client, group_name: str = "kuberns-default") -> st
     - Allow custom application ports
     """
     # try:
-    #     response = ec2_client.describe_security_groups(GroupNames=[group_name])
+    #     response = await ec2_client.describe_security_groups(GroupNames=[group_name])
     #     return response['SecurityGroups'][0]['GroupId']
     # except ec2_client.exceptions.ClientError:
     #     # Create new security group
-    #     response = ec2_client.create_security_group(
+    #     response = await ec2_client.create_security_group(
     #         GroupName=group_name,
     #         Description='Kuberns default security group'
     #     )
@@ -148,7 +147,7 @@ def ensure_security_group(ec2_client, group_name: str = "kuberns-default") -> st
     #     group_id = response['GroupId']
     #     
     #     # Add ingress rules
-    #     ec2_client.authorize_security_group_ingress(
+    #     await ec2_client.authorize_security_group_ingress(
     #         GroupId=group_id,
     #         IpPermissions=[
     #             {

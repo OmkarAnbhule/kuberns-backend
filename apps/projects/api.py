@@ -1,94 +1,135 @@
 from ninja_extra import ControllerBase, api_controller, route
 from ninja.security import django_auth
-from django.shortcuts import get_object_or_404
+from django.shortcuts import aget_object_or_404
 from django.db import transaction
 from typing import List
 from uuid import UUID
+from asgiref.sync import sync_to_async
 
-from .models import Project, Template, Plan
+from apps.core.exceptions import handle_api_exception, NotFoundException
+from .models import Project, Template, Plan, DatabaseConfig, EnvVar
 from .schemas import ProjectCreate, ProjectRead, TemplateSchema, PlanSchema
 
 
 @api_controller("/projects", tags=["Projects"])
 class ProjectsController(ControllerBase):
-    
+
     @route.get("/", response=List[ProjectRead], auth=django_auth)
-    def list_projects(self, request):
+    @handle_api_exception
+    async def list_projects(self, request):
         """
         List all projects for the authenticated user.
-        
+
         TODO: Add pagination, filtering, and sorting
         """
-        projects = Project.objects.filter(owner=request.user, deleted_at__isnull=True)
+        projects = [
+            p
+            async for p in Project.objects.filter(
+                owner=request.user, deleted_at__isnull=True
+            )
+        ]
         return projects
 
     @route.post("/", response=ProjectRead, auth=django_auth)
-    def create_project(self, request, payload: ProjectCreate):
+    @handle_api_exception
+    async def create_project(self, request, payload: ProjectCreate):
         """
         Create a new project with nested resources.
-        
-        TODO: Implement in transaction with proper error handling:
-        - Validate template and plan exist
-        - Create project
-        - Create database config if provided
-        - Create environment variables
-        - Handle GitHub repo association
+
+        Creates project with:
+        - Template and plan validation
+        - Environment variables
+        - Database configuration (if provided)
+        - GitHub repo association (if provided)
         """
-        with transaction.atomic():
-            # Placeholder implementation
-            template = get_object_or_404(Template, id=payload.template_id)
-            plan = get_object_or_404(Plan, id=payload.plan_id)
-            
-            project = Project.objects.create(
-                owner=request.user,
-                name=payload.name,
-                city=payload.city,
-                aws_region=payload.aws_region,
-                template=template,
-                plan=plan,
-                selected_port=payload.selected_port,
-                is_random_port=payload.is_random_port,
+
+        template = Template.objects.get(id=payload.template_id)
+        plan = Plan.objects.get(id=payload.plan_id)
+
+        # Create project
+        project = Project.objects.create(
+            owner=request.user,
+            name=payload.name,
+            aws_region=payload.aws_region,
+            template=template,
+            plan=plan,
+            organization=payload.organization,
+            repository_name=payload.repository_name,
+            branch_name=payload.branch_name,
+            selected_port=payload.selected_port,
+            is_random_port=payload.is_random_port,
+        )
+
+        # Create environment variables
+        if payload.env_vars:
+            env_vars_to_create = [
+                EnvVar(
+                    project=project,
+                    key=env_var.key,
+                    value_encrypted=env_var.value,
+                )
+                for env_var in payload.env_vars
+            ]
+            EnvVar.objects.bulk_create(env_vars_to_create)
+
+        # Create database config if provided
+        if payload.database_config and payload.database_config.connection_url:
+            DatabaseConfig.objects.create(
+                project=project,
+                connection_url_encrypted=payload.database_config.connection_url,
             )
-            
-            # TODO: Create nested resources (env vars, db config, etc.)
-            
-            return project
+
+        # Refresh to get related objects
+        project.refresh_from_db()
+
+        return project
 
     @route.get("/{project_id}", response=ProjectRead, auth=django_auth)
-    def get_project(self, request, project_id: UUID):
+    @handle_api_exception
+    async def get_project(self, request, project_id: UUID):
         """Get a specific project by ID"""
-        project = get_object_or_404(Project, id=project_id, owner=request.user, deleted_at__isnull=True)
+        project = await aget_object_or_404(
+            Project, id=project_id, owner=request.user, deleted_at__isnull=True
+        )
         return project
 
     @route.put("/{project_id}", response=ProjectRead, auth=django_auth)
-    def update_project(self, request, project_id: UUID, payload: ProjectCreate):
+    @handle_api_exception
+    async def update_project(self, request, project_id: UUID, payload: ProjectCreate):
         """
         Update an existing project.
-        
+
         TODO: Implement update logic with proper validation
         """
-        project = get_object_or_404(Project, id=project_id, owner=request.user, deleted_at__isnull=True)
+        project = await aget_object_or_404(
+            Project, id=project_id, owner=request.user, deleted_at__isnull=True
+        )
         # TODO: Update project fields
         return project
 
     @route.delete("/{project_id}", auth=django_auth)
-    def delete_project(self, request, project_id: UUID):
+    @handle_api_exception
+    async def delete_project(self, request, project_id: UUID):
         """
         Soft delete a project.
-        
+
         TODO: Implement soft delete and cleanup of related resources
         """
-        project = get_object_or_404(Project, id=project_id, owner=request.user, deleted_at__isnull=True)
+        project = await aget_object_or_404(
+            Project, id=project_id, owner=request.user, deleted_at__isnull=True
+        )
         # TODO: Set deleted_at timestamp
         return {"success": True}
 
     # Helper endpoints
     @route.get("/templates/", response=List[TemplateSchema])
-    def list_templates(self, request):
+    @handle_api_exception
+    async def list_templates(self, request):
         """List available project templates"""
-        return Template.objects.all()
+        return [t async for t in Template.objects.all()]
 
     @route.get("/plans/", response=List[PlanSchema])
-    def list_plans(self, request):
+    @handle_api_exception
+    async def list_plans(self, request):
         """List available pricing plans"""
-        return Plan.objects.all()
+        return [p async for p in Plan.objects.all()]

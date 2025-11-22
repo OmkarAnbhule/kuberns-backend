@@ -34,7 +34,6 @@ class EnvVarCreate(BaseModel):
 class EnvVarSchema(BaseModel):
     id: int
     key: str
-    is_secret: bool
     # Note: Don't expose encrypted values in API responses
     
     class Config:
@@ -55,7 +54,9 @@ class ProjectCreate(BaseModel):
     - Template/Plan existence
     """
     name: str
-    city: str
+    organization:str
+    repository_name:str
+    branch_name:str
     aws_region: str
     template_id: int
     plan_id: int
@@ -74,7 +75,9 @@ class ProjectRead(BaseModel):
     """
     id: UUID
     name: str
-    city: str
+    organization: str
+    repository_name: str
+    branch_name: str
     aws_region: str
     selected_port: Optional[int]
     is_random_port: bool
