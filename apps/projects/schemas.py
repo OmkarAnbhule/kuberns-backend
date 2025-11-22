@@ -7,8 +7,9 @@ from datetime import datetime
 class TemplateSchema(BaseModel):
     id: int
     name: str
-    description: str
-    
+    category: str
+    slug: Optional[str]
+
     class Config:
         from_attributes = True
 
@@ -20,7 +21,7 @@ class PlanSchema(BaseModel):
     ram_mb: int
     bandwidth_gb: int
     price_monthly: float
-    
+
     class Config:
         from_attributes = True
 
@@ -35,7 +36,7 @@ class EnvVarSchema(BaseModel):
     id: int
     key: str
     # Note: Don't expose encrypted values in API responses
-    
+
     class Config:
         from_attributes = True
 
@@ -47,16 +48,17 @@ class DatabaseConfigCreate(BaseModel):
 class ProjectCreate(BaseModel):
     """
     Schema for creating new projects.
-    
+
     TODO: Add validation for:
     - AWS region format
     - Port ranges
     - Template/Plan existence
     """
+
     name: str
-    organization:str
-    repository_name:str
-    branch_name:str
+    organization: str
+    repository_name: str
+    branch_name: str
     aws_region: str
     template_id: int
     plan_id: int
@@ -70,9 +72,10 @@ class ProjectCreate(BaseModel):
 class ProjectRead(BaseModel):
     """
     Schema for reading project data.
-    
+
     TODO: Add nested serialization for related objects
     """
+
     id: UUID
     name: str
     organization: str
@@ -86,6 +89,6 @@ class ProjectRead(BaseModel):
     template: TemplateSchema
     plan: PlanSchema
     env_vars: List[EnvVarSchema]
-    
+
     class Config:
         from_attributes = True
