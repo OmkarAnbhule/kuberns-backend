@@ -82,7 +82,7 @@ class ProjectsController(ControllerBase):
 
         return project
 
-    @route.get("/{project_id}", response=ProjectRead, auth=AsyncJWTAuth())
+    @route.get("/{project_id}/", response=ProjectRead, auth=AsyncJWTAuth())
     @handle_api_exception
     async def get_project(self, request, project_id: UUID):
         """Get a specific project by ID"""
@@ -91,7 +91,7 @@ class ProjectsController(ControllerBase):
         )
         return project
 
-    @route.put("/{project_id}", response=ProjectRead, auth=AsyncJWTAuth())
+    @route.put("/{project_id}/", response=ProjectRead, auth=AsyncJWTAuth())
     @handle_api_exception
     async def update_project(self, request, project_id: UUID, payload: ProjectCreate):
         """
@@ -105,7 +105,7 @@ class ProjectsController(ControllerBase):
         # TODO: Update project fields
         return project
 
-    @route.delete("/{project_id}", auth=AsyncJWTAuth())
+    @route.delete("/{project_id}/", auth=AsyncJWTAuth())
     @handle_api_exception
     async def delete_project(self, request, project_id: UUID):
         """
@@ -120,13 +120,13 @@ class ProjectsController(ControllerBase):
         return {"success": True}
 
     # Helper endpoints
-    @route.get("/templates/", response=List[TemplateSchema], auth=AsyncJWTAuth())
+    @route.get("/templates", response=List[TemplateSchema], auth=AsyncJWTAuth())
     @handle_api_exception
     async def list_templates(self, request):
         """List available project templates"""
         return [t async for t in Template.objects.all()]
 
-    @route.get("/plans/", response=List[PlanSchema], auth=AsyncJWTAuth())
+    @route.get("/plans", response=List[PlanSchema], auth=AsyncJWTAuth())
     @handle_api_exception
     async def list_plans(self, request):
         """List available pricing plans"""
