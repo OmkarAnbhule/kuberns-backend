@@ -1,0 +1,105 @@
+{
+    "templates": [
+      {
+        "name": "Next.js",
+        "slug": "nextjs",
+        "category": "framework"
+      },
+      {
+        "name": "Vite",
+        "slug": "vite",
+        "category": "tooling"
+      },
+      {
+        "name": "Vite + React",
+        "slug": "vite-react",
+        "category": "framework"
+      },
+      {
+        "name": "Vue",
+        "slug": "vue",
+        "category": "framework"
+      },
+      {
+        "name": "SvelteKit",
+        "slug": "sveltekit",
+        "category": "framework"
+      },
+      {
+        "name": "Nuxt",
+        "slug": "nuxt",
+        "category": "framework"
+      },
+      {
+        "name": "Astro",
+        "slug": "astro",
+        "category": "framework"
+      },
+      {
+        "name": "Remix",
+        "slug": "remix",
+        "category": "framework"
+      },
+      {
+        "name": "SolidStart",
+        "slug": "solidstart",
+        "category": "framework"
+      },
+      {
+        "name": "Angular",
+        "slug": "angular",
+        "category": "framework"
+      },
+      {
+        "name": "Qwik",
+        "slug": "qwik",
+        "category": "framework"
+      },
+      {
+        "name": "Expo",
+        "slug": "expo",
+        "category": "mobile"
+      },
+      {
+        "name": "Electron",
+        "slug": "electron",
+        "category": "desktop"
+      },
+      {
+        "name": "Tauri",
+        "slug": "tauri",
+        "category": "desktop"
+      },
+      {
+        "name": "RedwoodJS",
+        "slug": "redwood",
+        "category": "framework"
+      },
+      {
+        "name": "NestJS",
+        "slug": "nestjs",
+        "category": "backend"
+      },
+      {
+        "name": "Express",
+        "slug": "express",
+        "category": "backend"
+      },
+      {
+        "name": "Fastify",
+        "slug": "fastify",
+        "category": "backend"
+      },
+      {
+        "name": "Preact",
+        "slug": "preact",
+        "category": "framework"
+      },
+      {
+        "name": "Gatsby",
+        "slug": "gatsby",
+        "category": "framework"
+      }
+    ]
+  }
+  

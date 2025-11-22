@@ -8,7 +8,8 @@ class Template(models.Model):
     """Project template model"""
 
     name = models.CharField(max_length=100)
-    description = models.TextField()
+    category = models.CharField(max_length=100, null=True, blank=True)
+    slug = models.CharField(max_length=100, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -21,10 +22,12 @@ class Plan(models.Model):
     """Pricing plan model"""
 
     name = models.CharField(max_length=50)
-    cpu_cores = models.IntegerField()
-    ram_mb = models.IntegerField()
-    bandwidth_gb = models.IntegerField()
-    price_monthly = models.DecimalField(max_digits=10, decimal_places=2)
+    cpu_cores = models.IntegerField(default=0)
+    ram_mb = models.IntegerField(default=0)
+    bandwidth_gb = models.IntegerField(default=0)
+    price_monthly = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    price_hourly = models.DecimalField(max_digits=10, decimal_places=2 , default=0.00)
+    storage_gb = models.IntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

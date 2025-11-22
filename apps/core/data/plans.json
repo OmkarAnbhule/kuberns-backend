@@ -1,0 +1,35 @@
+[
+    {
+        "id": "starter",
+        "name": "Starter",
+        "storage": "10 GB",
+        "bandwidth": "10 GB",
+        "memory": "10 GB",
+        "cpu": "2 GB",
+        "monthlyCost": "₹0",
+        "pricePerHour": "₹0",
+        "description": "Ideal for personal blogs and small websites."
+    },
+    {
+        "id": "professional",
+        "name": "Professional",
+        "storage": "50 GB",
+        "bandwidth": "50 GB",
+        "memory": "20 GB",
+        "cpu": "4 GB",
+        "monthlyCost": "₹500",
+        "pricePerHour": "₹10",
+        "description": "Perfect for growing businesses and applications."
+    },
+    {
+        "id": "enterprise",
+        "name": "Enterprise",
+        "storage": "100 GB",
+        "bandwidth": "100 GB",
+        "memory": "50 GB",
+        "cpu": "8 GB",
+        "monthlyCost": "₹2000",
+        "pricePerHour": "₹50",
+        "description": "For large-scale applications and enterprises."
+    }
+]
