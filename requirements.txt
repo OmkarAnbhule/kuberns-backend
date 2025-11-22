@@ -10,3 +10,4 @@ psycopg2-binary==2.9.11
 dj-database-url==3.0.1
 requests==2.32.5
 httpx==0.28.1
+gunicorn==23.0.0
