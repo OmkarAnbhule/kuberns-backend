@@ -26,8 +26,9 @@ class Plan(models.Model):
     ram_mb = models.IntegerField(default=0)
     bandwidth_gb = models.IntegerField(default=0)
     price_monthly = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    price_hourly = models.DecimalField(max_digits=10, decimal_places=2 , default=0.00)
+    price_hourly = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     storage_gb = models.IntegerField(default=0)
+    description = models.CharField(max_length=255, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -23,6 +23,7 @@ class PlanSchema(BaseModel):
     price_monthly: float
     price_hourly: float
     storage_gb: int
+    description: Optional[str] = None
 
     class Config:
         from_attributes = True
