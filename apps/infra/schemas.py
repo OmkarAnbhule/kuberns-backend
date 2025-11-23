@@ -110,6 +110,21 @@ class DeploymentLogSchema(BaseModel):
         from_attributes = True
 
 
+class DeploymentLogDetailSchema(BaseModel):
+    """Detailed deployment log with project and instance info"""
+    id: int
+    status: str
+    output: str
+    timestamp: datetime
+    project_id: str = Field(description="Project UUID")
+    project_name: str = Field(description="Project name")
+    instance_id: Optional[int] = Field(None, description="Database instance ID")
+    aws_instance_id: Optional[str] = Field(None, description="AWS EC2 instance ID")
+    
+    class Config:
+        from_attributes = True
+
+
 class AWSCredentialSchema(BaseModel):
     """AWS Credential response schema (without sensitive data)"""
     id: int
