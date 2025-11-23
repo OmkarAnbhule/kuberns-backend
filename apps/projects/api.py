@@ -141,7 +141,7 @@ class ProjectsController(ControllerBase):
             # Fetch existing env vars for these keys
             existing_env_vars = {
                 obj.key: obj
-                for obj in await EnvVar.objects.filter(project=project, key__in=keys).aall()
+                async for obj in EnvVar.objects.filter(project=project, key__in=keys).all()
             }
 
             to_update = []
