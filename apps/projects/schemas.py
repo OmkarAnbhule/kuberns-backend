@@ -1,8 +1,9 @@
 from pydantic import BaseModel
+from ninja import ModelSchema
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
-
+from .models import Project
 
 class TemplateSchema(BaseModel):
     id: int
@@ -73,7 +74,22 @@ class ProjectCreate(BaseModel):
     database_config: Optional[DatabaseConfigCreate] = None
 
 
-class ProjectRead(BaseModel):
+class ProjectRead(ModelSchema):
+    """
+    Schema for reading project data.
+
+    TODO: Add nested serialization for related objects
+    """
+    plan: PlanSchema
+    template: TemplateSchema
+    env_vars: Optional[List[EnvVarSchema]] = None
+
+    class Config:
+        model = Project
+        model_fields = "__all__"
+        from_attributes = True
+        
+class CreateProjectResponse(BaseModel):
     """
     Schema for reading project data.
 
@@ -92,7 +108,6 @@ class ProjectRead(BaseModel):
     updated_at: datetime
     template: TemplateSchema
     plan: PlanSchema
-    env_vars: List[EnvVarSchema]
 
     class Config:
         from_attributes = True

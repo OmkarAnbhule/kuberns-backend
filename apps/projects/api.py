@@ -6,7 +6,7 @@ from ninja_jwt.authentication import AsyncJWTAuth
 
 from apps.core.exceptions import handle_api_exception
 from .models import Project, Template, Plan, DatabaseConfig, EnvVar
-from .schemas import ProjectCreate, ProjectRead, TemplateSchema, PlanSchema
+from .schemas import ProjectCreate, ProjectRead, TemplateSchema, PlanSchema, CreateProjectResponse
 
 
 @api_controller("/projects", tags=["Projects"])
@@ -22,13 +22,13 @@ class ProjectsController(ControllerBase):
         """
         projects = [
             p
-            async for p in Project.objects.filter(
+            async for p in Project.objects.prefetch_related("env_vars").select_related("template","plan").filter(
                 owner=request.user, deleted_at__isnull=True
             )
         ]
         return projects
 
-    @route.post("/", response=ProjectRead, auth=AsyncJWTAuth())
+    @route.post("/", response=CreateProjectResponse, auth=AsyncJWTAuth())
     @handle_api_exception
     async def create_project(self, request, payload: ProjectCreate):
         """
@@ -41,11 +41,15 @@ class ProjectsController(ControllerBase):
         - GitHub repo association (if provided)
         """
 
-        template = Template.objects.get(id=payload.template_id)
-        plan = Plan.objects.get(id=payload.plan_id)
+        template = await Template.objects.filter(id=payload.template_id).afirst()
+        if not template:
+            raise ValueError("Invalid template ID")
+        plan = await Plan.objects.filter(id=payload.plan_id).afirst()
+        if not plan:
+            raise ValueError("Invalid plan ID")
 
         # Create project
-        project = Project.objects.create(
+        project = await Project.objects.prefetch_related("env_vars").acreate(
             owner=request.user,
             name=payload.name,
             aws_region=payload.aws_region,
@@ -69,17 +73,17 @@ class ProjectsController(ControllerBase):
                 )
                 for env_var in payload.env_vars
             ]
-            EnvVar.objects.bulk_create(env_vars_to_create)
+            await EnvVar.objects.abulk_create(env_vars_to_create)
 
         # Create database config if provided
         if payload.database_config and payload.database_config.connection_url:
-            DatabaseConfig.objects.create(
+            await DatabaseConfig.objects.acreate(
                 project=project,
                 connection_url_encrypted=payload.database_config.connection_url,
             )
 
         # Refresh to get related objects
-        project.refresh_from_db()
+        await project.arefresh_from_db()
 
         return project
 
