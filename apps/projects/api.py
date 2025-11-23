@@ -136,16 +136,43 @@ class ProjectsController(ControllerBase):
         if payload.is_random_port:
             project.is_random_port = payload.is_random_port
         if payload.env_vars:
-            await project.env_vars.aset(
-                [
-                    EnvVar(
-                        key=env_var.key,
-                        value_encrypted=env_var.value,
-                        is_secret=env_var.is_secret,
+            keys = [env.key for env in payload.env_vars]
+
+            # Fetch existing env vars for these keys
+            existing_env_vars = {
+                obj.key: obj
+                for obj in await EnvVar.objects.filter(project=project, key__in=keys).aall()
+            }
+
+            to_update = []
+            to_create = []
+
+            for env in payload.env_vars:
+                if env.key in existing_env_vars:
+                    # Update existing
+                    obj = existing_env_vars[env.key]
+                    obj.value_encrypted = env.value
+                    obj.is_secret = env.is_secret
+                    to_update.append(obj)
+                else:
+                    # Create new
+                    to_create.append(
+                        EnvVar(
+                            project=project,
+                            key=env.key,
+                            value_encrypted=env.value,
+                            is_secret=env.is_secret,
+                        )
                     )
-                    for env_var in payload.env_vars
-                ]
-            )
+
+            # Bulk create new env vars
+            if to_create:
+                await EnvVar.objects.abulk_create(to_create)
+
+            # Bulk update existing env vars
+            if to_update:
+                await EnvVar.objects.abulk_update(to_update, fields=["value_encrypted", "is_secret"])
+
         if payload.database_config and payload.database_config.connection_url:
             project.databaseconfig.connection_url_encrypted = (
                 payload.database_config.connection_url
