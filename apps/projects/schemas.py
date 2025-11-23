@@ -38,6 +38,7 @@ class EnvVarCreate(BaseModel):
 class EnvVarSchema(BaseModel):
     id: int
     key: str
+    is_secret:bool=False
     # Note: Don't expose encrypted values in API responses
 
     class Config:

@@ -65,6 +65,7 @@ class ProjectsController(ControllerBase):
                     project=project,
                     key=env_var.key,
                     value_encrypted=env_var.value,
+                    is_secret=env_var.is_secret,
                 )
                 for env_var in payload.env_vars
             ]
