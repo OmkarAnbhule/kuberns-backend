@@ -136,7 +136,7 @@ class ProjectsController(ControllerBase):
         if payload.is_random_port:
             project.is_random_port = payload.is_random_port
         if payload.env_vars:
-            project.env_vars.set(
+            await project.env_vars.aset(
                 [
                     EnvVar(
                         key=env_var.key,
