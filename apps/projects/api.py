@@ -110,7 +110,7 @@ class ProjectsController(ControllerBase):
 
         TODO: Implement update logic with proper validation
         """
-        project = await Project.objects.select_related("template","plan").prefetch_related("env_vars").filter(id=project_id, owner=request.user, deleted_at__isnull=True).afirst()
+        project = await Project.objects.select_related("template","plan","databaseconfig").prefetch_related("env_vars").filter(id=project_id, owner=request.user, deleted_at__isnull=True).afirst()
         
         if not project:
             raise ValueError("Project not found")
@@ -147,7 +147,7 @@ class ProjectsController(ControllerBase):
                 ]
             )
         if payload.database_config and payload.database_config.connection_url:
-            project.database_config.connection_url_encrypted = (
+            project.databaseconfig.connection_url_encrypted = (
                 payload.database_config.connection_url
             )
         await project.asave()
