@@ -6,7 +6,13 @@ from ninja_jwt.authentication import AsyncJWTAuth
 
 from apps.core.exceptions import handle_api_exception
 from .models import Project, Template, Plan, DatabaseConfig, EnvVar
-from .schemas import ProjectCreate, ProjectRead, TemplateSchema, PlanSchema, CreateProjectResponse
+from .schemas import (
+    ProjectCreate,
+    ProjectRead,
+    TemplateSchema,
+    PlanSchema,
+    CreateProjectResponse,
+)
 
 
 @api_controller("/projects", tags=["Projects"])
@@ -22,9 +28,9 @@ class ProjectsController(ControllerBase):
         """
         projects = [
             p
-            async for p in Project.objects.prefetch_related("env_vars").select_related("template","plan").filter(
-                owner=request.user, deleted_at__isnull=True
-            )
+            async for p in Project.objects.prefetch_related("env_vars")
+            .select_related("template", "plan")
+            .filter(owner=request.user, deleted_at__isnull=True)
         ]
         return projects
 
@@ -104,11 +110,49 @@ class ProjectsController(ControllerBase):
 
         TODO: Implement update logic with proper validation
         """
-        project = await aget_object_or_404(
-            Project, id=project_id, owner=request.user, deleted_at__isnull=True
-        )
-        # TODO: Update project fields
+        project = await Project.objects.select_related("template","plan").prefetch_related("env_vars").filter(id=project_id, owner=request.user, deleted_at__isnull=True).afirst()
+        
+        if not project:
+            raise ValueError("Project not found")
+        
+        if payload.name:
+            project.name = payload.name
+        if payload.aws_region:
+            project.aws_region = payload.aws_region
+        if payload.template_id:
+            project.template = await Template.objects.filter(
+                id=payload.template_id
+            ).afirst()
+        if payload.plan_id:
+            project.plan = await Plan.objects.filter(id=payload.plan_id).afirst()
+        if payload.organization:
+            project.organization = payload.organization
+        if payload.repository_name:
+            project.repository_name = payload.repository_name
+        if payload.branch_name:
+            project.branch_name = payload.branch_name
+        if payload.selected_port:
+            project.selected_port = payload.selected_port
+        if payload.is_random_port:
+            project.is_random_port = payload.is_random_port
+        if payload.env_vars:
+            project.env_vars.set(
+                [
+                    EnvVar(
+                        key=env_var.key,
+                        value_encrypted=env_var.value,
+                        is_secret=env_var.is_secret,
+                    )
+                    for env_var in payload.env_vars
+                ]
+            )
+        if payload.database_config and payload.database_config.connection_url:
+            project.database_config.connection_url_encrypted = (
+                payload.database_config.connection_url
+            )
+        await project.asave()
         return project
+
 
     @route.delete("/{project_id}/", auth=AsyncJWTAuth())
     @handle_api_exception
@@ -118,9 +162,12 @@ class ProjectsController(ControllerBase):
 
         TODO: Implement soft delete and cleanup of related resources
         """
-        project = await aget_object_or_404(
-            Project, id=project_id, owner=request.user, deleted_at__isnull=True
-        )
+        project = await Project.objects.select_related("template","plan").prefetch_related("env_vars").filter(id=project_id, owner=request.user, deleted_at__isnull=True).afirst()
+        
+        if not project:
+            raise ValueError("Project not found")
+        
+        await project.adelete()
         # TODO: Set deleted_at timestamp
         return {"success": True}
 
