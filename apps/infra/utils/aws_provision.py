@@ -418,7 +418,7 @@ def ensure_security_group(ec2_client, group_name: str, ports: list = None) -> st
     try:
         create_params = {
             'GroupName': group_name,
-            'Description': f'Kuberns security group for {project_name}'
+            'Description': f'Kuberns security group for {group_name}'
         }
         
         if vpc_id:
