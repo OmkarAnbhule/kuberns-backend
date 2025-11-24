@@ -177,6 +177,11 @@ Everything else hardcoded:
 **Solution:** `django-encrypted-model-fields` with Fernet (AES-128).  
 **Benefit:** Credentials encrypted at rest; key in environment only.
 
+### 6. Project ID-Based Security Groups
+**Problem:** Using project names for security groups caused "already exists" errors due to AWS eventual consistency.  
+**Solution:** Security groups named with first 8 chars of project UUID (e.g., `kuberns-7c5272e4`).  
+**Benefit:** Guaranteed uniqueness - no naming conflicts, automatic cleanup on termination.
+
 ---
 
 ## 📡 API Structure & Payloads

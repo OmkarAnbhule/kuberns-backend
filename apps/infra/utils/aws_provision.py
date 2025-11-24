@@ -52,6 +52,7 @@ def provision_ec2_instance(
     aws_access_key: str,
     aws_secret_key: str,
     region: str,
+    project_id: str,
     project_name: str,
     port: int = 80
 ) -> Dict:
@@ -68,6 +69,7 @@ def provision_ec2_instance(
         aws_access_key: AWS access key
         aws_secret_key: AWS secret key
         region: AWS region (e.g., 'us-east-1')
+        project_id: Project UUID for security group naming (ensures uniqueness)
         project_name: Project name for tagging
         port: Single application port to open (SSH port 22 always included)
     
@@ -210,8 +212,10 @@ systemctl enable nginx
         
         logger.info(f"Using AMI: {ami} for region {region}")
         
-        # Create or get security group
-        security_group_id = ensure_security_group(ec2_client, project_name, ports)
+        # Create or get security group using project_id for uniqueness
+        # Use first 8 chars of project_id for shorter, unique security group name
+        security_group_name = f"kuberns-{project_id[:8]}"
+        security_group_id = ensure_security_group(ec2_client, security_group_name, ports)
         logger.info(f"Using security group: {security_group_id}")
         
         # Prepare launch parameters with minimal configuration
@@ -316,13 +320,13 @@ def get_default_ubuntu_ami(ec2_client) -> str:
         return "ami-0c7217cdde317cfec"
 
 
-def ensure_security_group(ec2_client, project_name: str, ports: list = None) -> str:
+def ensure_security_group(ec2_client, group_name: str, ports: list = None) -> str:
     """
     Create or get existing security group with proper rules.
     
     Args:
         ec2_client: boto3 EC2 client
-        project_name: Project name for security group naming
+        group_name: Security group name (should already include prefix like 'kuberns-xxx')
         ports: List of ports to open (default: [22, 80, 443, 3000, 8000, 8080])
     
     Returns:
@@ -330,8 +334,6 @@ def ensure_security_group(ec2_client, project_name: str, ports: list = None) -> 
     """
     if ports is None:
         ports = [22, 80, 443, 3000, 8000, 8080]
-    
-    group_name = f"kuberns-{project_name}"
     vpc_id = None
     
     # Get default VPC first

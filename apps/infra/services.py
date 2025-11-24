@@ -179,6 +179,7 @@ class InstanceService:
                 aws_access_key=access_key,
                 aws_secret_key=secret_key,
                 region=region,
+                project_id=str(project.id),  # Pass project ID for unique security group
                 project_name=project.name,
                 port=port
             )
