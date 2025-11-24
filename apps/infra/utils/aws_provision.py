@@ -559,7 +559,7 @@ def get_instance_status(
         
         instance = response['Reservations'][0]['Instances'][0]
         
-    return {
+        return {
             'instance_id': instance_id,
             'status': instance['State']['Name'],
             'public_ip': instance.get('PublicIpAddress'),
