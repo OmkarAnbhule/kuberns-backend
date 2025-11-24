@@ -18,7 +18,7 @@ from .schemas import (
 @api_controller("/projects", tags=["Projects"])
 class ProjectsController(ControllerBase):
 
-    @route.get("/", response=List[ProjectRead], auth=AsyncJWTAuth())
+    @route.get("/getAll", response=List[ProjectRead], auth=AsyncJWTAuth())
     @handle_api_exception
     async def list_projects(self, request):
         """
@@ -34,7 +34,7 @@ class ProjectsController(ControllerBase):
         ]
         return projects
 
-    @route.post("/", response=CreateProjectResponse, auth=AsyncJWTAuth())
+    @route.post("/create", response=CreateProjectResponse, auth=AsyncJWTAuth())
     @handle_api_exception
     async def create_project(self, request, payload: ProjectCreate):
         """
