@@ -342,11 +342,63 @@ def ensure_security_group(ec2_client, project_name: str, ports: list = None) -> 
         
         if response['SecurityGroups']:
             security_group_id = response['SecurityGroups'][0]['GroupId']
-            logger.info(f"Using existing security group: {security_group_id}")
+            logger.info(f"Reusing existing security group: {security_group_id}")
+            
+            # Ensure the required ports are open by updating rules if needed
+            try:
+                existing_group = response['SecurityGroups'][0]
+                existing_ports = set()
+                
+                # Extract existing ports
+                for permission in existing_group.get('IpPermissions', []):
+                    if permission.get('IpProtocol') == 'tcp':
+                        existing_ports.add(permission.get('FromPort'))
+                
+                # Find missing ports that need to be added
+                missing_ports = [port for port in ports if port not in existing_ports]
+                
+                if missing_ports:
+                    logger.info(f"Adding missing ports to security group: {missing_ports}")
+                    ip_permissions = []
+                    for port in missing_ports:
+                        port_name = {
+                            22: 'SSH',
+                            80: 'HTTP',
+                            443: 'HTTPS',
+                            3000: 'App port 3000',
+                            8000: 'App port 8000',
+                            8080: 'App port 8080'
+                        }.get(port, f'Port {port}')
+                        
+                        ip_permissions.append({
+                            'IpProtocol': 'tcp',
+                            'FromPort': port,
+                            'ToPort': port,
+                            'IpRanges': [{'CidrIp': '0.0.0.0/0', 'Description': port_name}]
+                        })
+                    
+                    try:
+                        ec2_client.authorize_security_group_ingress(
+                            GroupId=security_group_id,
+                            IpPermissions=ip_permissions
+                        )
+                        logger.info(f"Successfully added missing ports to security group")
+                    except ClientError as e:
+                        # If the rule already exists, just log and continue
+                        if 'InvalidPermission.Duplicate' in str(e):
+                            logger.info(f"Ports already exist in security group, continuing")
+                        else:
+                            raise
+            
+            except Exception as e:
+                logger.warning(f"Could not update security group rules: {str(e)}")
+                # Continue anyway, the security group exists
+            
             return security_group_id
     
-    except ClientError:
-        pass
+    except ClientError as e:
+        # If describe fails, we'll try to create
+        logger.warning(f"Could not describe security groups: {str(e)}")
     
     # Create new security group
     try:
@@ -398,8 +450,28 @@ def ensure_security_group(ec2_client, project_name: str, ports: list = None) -> 
         return security_group_id
     
     except ClientError as e:
-        logger.error(f"Error creating security group: {str(e)}")
-        raise
+        error_code = e.response.get('Error', {}).get('Code', '')
+        error_message = e.response.get('Error', {}).get('Message', str(e))
+        
+        # If security group already exists, try to retrieve it
+        if 'InvalidGroup.Duplicate' in error_code or 'already exists' in error_message:
+            logger.warning(f"Security group {group_name} already exists, attempting to retrieve it")
+            try:
+                # Try again to describe it
+                response = ec2_client.describe_security_groups(
+                    Filters=[
+                        {'Name': 'group-name', 'Values': [group_name]}
+                    ]
+                )
+                if response['SecurityGroups']:
+                    security_group_id = response['SecurityGroups'][0]['GroupId']
+                    logger.info(f"Successfully retrieved existing security group: {security_group_id}")
+                    return security_group_id
+            except Exception as retry_error:
+                logger.error(f"Failed to retrieve existing security group: {retry_error}")
+        
+        logger.error(f"Error creating security group: {error_message}")
+        raise Exception(f"Security group error: {error_message}")
 
 
 def get_instance_status(
