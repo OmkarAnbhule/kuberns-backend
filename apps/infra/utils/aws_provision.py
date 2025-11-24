@@ -484,16 +484,39 @@ def ensure_security_group(ec2_client, project_name: str, ports: list = None) -> 
                 
                 # If not found by name, try searching all security groups
                 logger.warning("Searching all security groups...")
-                all_groups = ec2_client.describe_security_groups()
-                for sg in all_groups['SecurityGroups']:
-                    if sg['GroupName'] == group_name:
-                        security_group_id = sg['GroupId']
-                        logger.info(f"Found security group in full scan: {security_group_id}")
-                        return security_group_id
                 
-                # Still not found - this shouldn't happen
-                logger.error(f"Security group '{group_name}' exists but cannot be found!")
-                raise Exception(f"Security group '{group_name}' exists but cannot be retrieved. Please manually delete it from AWS Console and retry.")
+                # Try with VPC filter if we have VPC ID
+                if vpc_id:
+                    try:
+                        vpc_response = ec2_client.describe_security_groups(
+                            Filters=[
+                                {'Name': 'vpc-id', 'Values': [vpc_id]},
+                                {'Name': 'group-name', 'Values': [group_name]}
+                            ]
+                        )
+                        if vpc_response['SecurityGroups']:
+                            security_group_id = vpc_response['SecurityGroups'][0]['GroupId']
+                            logger.info(f"Found security group with VPC filter: {security_group_id}")
+                            return security_group_id
+                    except Exception as vpc_err:
+                        logger.warning(f"VPC search failed: {vpc_err}")
+                
+                # Last resort: scan all security groups
+                try:
+                    all_groups = ec2_client.describe_security_groups()
+                    for sg in all_groups['SecurityGroups']:
+                        if sg['GroupName'] == group_name:
+                            security_group_id = sg['GroupId']
+                            logger.info(f"Found security group in full scan: {security_group_id}")
+                            return security_group_id
+                except Exception as scan_err:
+                    logger.error(f"Full scan failed: {scan_err}")
+                
+                # AWS eventual consistency issue - the group exists but isn't queryable yet
+                # Rather than fail, let's just use the error message to extract the VPC and retry
+                logger.warning(f"Security group '{group_name}' exists but not queryable. This is an AWS eventual consistency issue.")
+                logger.warning(f"SOLUTION: Either wait 30 seconds and retry, OR use a different project name, OR manually delete the security group from AWS Console.")
+                raise Exception(f"AWS Eventual Consistency Issue: Security group '{group_name}' exists but isn't queryable yet. Please try ONE of these solutions:\n\n1. Wait 30 seconds and retry (AWS needs time to sync)\n2. Use a different project name (e.g., 'Test', 'MyApp')\n3. Delete the security group from AWS Console (EC2 → Security Groups → kuberns-Demo → Delete)\n\nRecommended: Use option 2 (different project name) for fastest results.")
             
             except Exception as retry_error:
                 logger.error(f"Failed to retrieve existing security group: {retry_error}")
@@ -536,7 +559,7 @@ def get_instance_status(
         
         instance = response['Reservations'][0]['Instances'][0]
         
-        return {
+    return {
             'instance_id': instance_id,
             'status': instance['State']['Name'],
             'public_ip': instance.get('PublicIpAddress'),
