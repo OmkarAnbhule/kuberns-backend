@@ -179,7 +179,7 @@ server {{
     server_name _;
     
     location / {{
-        try_files \$uri \$uri/ =404;
+        try_files \\$uri \\$uri/ =404;
     }}
 }}
 EOF
@@ -265,7 +265,8 @@ systemctl enable nginx
             'private_ip': instance.get('PrivateIpAddress'),
             'status': instance['State']['Name'],
             'instance_type': instance['InstanceType'],
-            'ami_id': instance['ImageId']
+            'ami_id': instance['ImageId'],
+            'security_group_id': security_group_id  # Return for cleanup later
         }
     
     except NoCredentialsError:
@@ -557,16 +558,18 @@ def terminate_instance(
     aws_access_key: str,
     aws_secret_key: str,
     region: str,
-    instance_id: str
+    instance_id: str,
+    security_group_id: str = None
 ) -> bool:
     """
-    Terminate an EC2 instance.
+    Terminate an EC2 instance and optionally clean up its security group.
     
     Args:
         aws_access_key: AWS access key
         aws_secret_key: AWS secret key
         region: AWS region
         instance_id: EC2 instance ID
+        security_group_id: Optional security group ID to delete after termination
     
     Returns:
         True if termination was successful
@@ -581,11 +584,47 @@ def terminate_instance(
         
         logger.info(f"Terminating instance {instance_id} in {region}")
         
+        # Get security groups before terminating
+        if not security_group_id:
+            try:
+                instances = ec2_client.describe_instances(InstanceIds=[instance_id])
+                if instances['Reservations']:
+                    instance = instances['Reservations'][0]['Instances'][0]
+                    security_groups = instance.get('SecurityGroups', [])
+                    # Find kuberns-managed security groups
+                    for sg in security_groups:
+                        if sg['GroupName'].startswith('kuberns-'):
+                            security_group_id = sg['GroupId']
+                            logger.info(f"Found kuberns security group to clean up: {security_group_id}")
+                            break
+            except Exception as e:
+                logger.warning(f"Could not retrieve security groups: {str(e)}")
+        
+        # Terminate the instance
         response = ec2_client.terminate_instances(InstanceIds=[instance_id])
         
         if response['TerminatingInstances']:
             current_state = response['TerminatingInstances'][0]['CurrentState']['Name']
             logger.info(f"Instance {instance_id} is now {current_state}")
+            
+            # Wait for instance to fully terminate before deleting security group
+            if security_group_id:
+                try:
+                    logger.info(f"Waiting for instance {instance_id} to terminate before cleaning up security group...")
+                    waiter = ec2_client.get_waiter('instance_terminated')
+                    waiter.wait(
+                        InstanceIds=[instance_id],
+                        WaiterConfig={'Delay': 15, 'MaxAttempts': 40}  # Wait up to 10 minutes
+                    )
+                    logger.info(f"Instance {instance_id} terminated successfully")
+                    
+                    # Delete the security group
+                    delete_security_group(ec2_client, security_group_id)
+                    
+                except Exception as wait_error:
+                    logger.warning(f"Could not wait for termination or delete security group: {str(wait_error)}")
+                    logger.info(f"Security group {security_group_id} may need manual cleanup")
+            
             return True
         
         return False
@@ -597,3 +636,48 @@ def terminate_instance(
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise
+
+
+def delete_security_group(ec2_client, security_group_id: str) -> bool:
+    """
+    Delete a security group, with retry logic for dependencies.
+    
+    Args:
+        ec2_client: boto3 EC2 client
+        security_group_id: Security group ID to delete
+    
+    Returns:
+        True if deletion was successful
+    """
+    try:
+        # Check if there are any instances still using this security group
+        response = ec2_client.describe_instances(
+            Filters=[
+                {'Name': 'instance.group-id', 'Values': [security_group_id]},
+                {'Name': 'instance-state-name', 'Values': ['pending', 'running', 'stopping', 'stopped']}
+            ]
+        )
+        
+        if response['Reservations']:
+            logger.warning(f"Security group {security_group_id} is still in use by other instances, skipping deletion")
+            return False
+        
+        # Delete the security group
+        logger.info(f"Deleting security group {security_group_id}")
+        ec2_client.delete_security_group(GroupId=security_group_id)
+        logger.info(f"Successfully deleted security group {security_group_id}")
+        return True
+    
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', '')
+        if error_code == 'DependencyViolation':
+            logger.warning(f"Security group {security_group_id} has dependencies, cannot delete yet")
+        elif error_code == 'InvalidGroup.NotFound':
+            logger.info(f"Security group {security_group_id} already deleted")
+        else:
+            logger.error(f"Error deleting security group: {str(e)}")
+        return False
+    
+    except Exception as e:
+        logger.error(f"Unexpected error deleting security group: {str(e)}")
+        return False

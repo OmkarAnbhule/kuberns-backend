@@ -189,6 +189,7 @@ class InstanceService:
             instance.private_ip = result.get('private_ip')
             instance.status = result['status']
             instance.ami_id = result.get('ami_id')
+            instance.security_group_id = result.get('security_group_id')  # Store for cleanup
             await sync_to_async(instance.save)()
             
             # Construct instance URL

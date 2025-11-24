@@ -60,6 +60,7 @@ class Instance(models.Model):
     ami_id = models.CharField(max_length=50, null=True, blank=True)
     region = models.CharField(max_length=50, default='us-east-1')
     port = models.IntegerField(null=True, blank=True, help_text="Application port")
+    security_group_id = models.CharField(max_length=50, null=True, blank=True, help_text="AWS Security Group ID for cleanup")
     
     # Error tracking
     error_message = models.TextField(null=True, blank=True)

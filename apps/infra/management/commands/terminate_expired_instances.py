@@ -76,12 +76,13 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING(f'  Would terminate {instance.instance_id}'))
                     continue
                 
-                # Terminate the instance
+                # Terminate the instance and clean up security group
                 terminate_instance(
                     aws_access_key=access_key,
                     aws_secret_key=secret_key,
                     region=instance.region,
-                    instance_id=instance.instance_id
+                    instance_id=instance.instance_id,
+                    security_group_id=instance.security_group_id  # Pass for cleanup
                 )
                 
                 # Update instance status
