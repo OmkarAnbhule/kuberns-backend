@@ -331,9 +331,18 @@ def ensure_security_group(ec2_client, project_name: str, ports: list = None) -> 
         ports = [22, 80, 443, 3000, 8000, 8080]
     
     group_name = f"kuberns-{project_name}"
+    vpc_id = None
     
+    # Get default VPC first
     try:
-        # Try to find existing security group
+        vpc_response = ec2_client.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
+        vpc_id = vpc_response['Vpcs'][0]['VpcId'] if vpc_response['Vpcs'] else None
+        logger.info(f"Using VPC: {vpc_id}")
+    except Exception as e:
+        logger.warning(f"Could not get default VPC: {str(e)}")
+    
+    # Try to find existing security group (search across all groups)
+    try:
         response = ec2_client.describe_security_groups(
             Filters=[
                 {'Name': 'group-name', 'Values': [group_name]}
@@ -342,7 +351,7 @@ def ensure_security_group(ec2_client, project_name: str, ports: list = None) -> 
         
         if response['SecurityGroups']:
             security_group_id = response['SecurityGroups'][0]['GroupId']
-            logger.info(f"Reusing existing security group: {security_group_id}")
+            logger.info(f"Found existing security group: {security_group_id}")
             
             # Ensure the required ports are open by updating rules if needed
             try:
@@ -400,12 +409,10 @@ def ensure_security_group(ec2_client, project_name: str, ports: list = None) -> 
         # If describe fails, we'll try to create
         logger.warning(f"Could not describe security groups: {str(e)}")
     
-    # Create new security group
+    # No existing security group found, create new one
+    logger.info(f"Creating new security group: {group_name}")
+    
     try:
-        # Get default VPC
-        vpc_response = ec2_client.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
-        vpc_id = vpc_response['Vpcs'][0]['VpcId'] if vpc_response['Vpcs'] else None
-        
         create_params = {
             'GroupName': group_name,
             'Description': f'Kuberns security group for {project_name}'
@@ -453,22 +460,43 @@ def ensure_security_group(ec2_client, project_name: str, ports: list = None) -> 
         error_code = e.response.get('Error', {}).get('Code', '')
         error_message = e.response.get('Error', {}).get('Message', str(e))
         
-        # If security group already exists, try to retrieve it
-        if 'InvalidGroup.Duplicate' in error_code or 'already exists' in error_message:
-            logger.warning(f"Security group {group_name} already exists, attempting to retrieve it")
+        # If security group already exists, MUST retrieve it and return it
+        if 'InvalidGroup.Duplicate' in error_code or 'already exists' in error_message.lower():
+            logger.warning(f"Security group '{group_name}' already exists during creation, retrieving it...")
+            
+            # CRITICAL: Wait a moment and retry the describe call
+            import time
+            time.sleep(1)
+            
             try:
-                # Try again to describe it
+                # Search more thoroughly - try with and without VPC filter
                 response = ec2_client.describe_security_groups(
                     Filters=[
                         {'Name': 'group-name', 'Values': [group_name]}
                     ]
                 )
+                
                 if response['SecurityGroups']:
                     security_group_id = response['SecurityGroups'][0]['GroupId']
                     logger.info(f"Successfully retrieved existing security group: {security_group_id}")
                     return security_group_id
+                
+                # If not found by name, try searching all security groups
+                logger.warning("Searching all security groups...")
+                all_groups = ec2_client.describe_security_groups()
+                for sg in all_groups['SecurityGroups']:
+                    if sg['GroupName'] == group_name:
+                        security_group_id = sg['GroupId']
+                        logger.info(f"Found security group in full scan: {security_group_id}")
+                        return security_group_id
+                
+                # Still not found - this shouldn't happen
+                logger.error(f"Security group '{group_name}' exists but cannot be found!")
+                raise Exception(f"Security group '{group_name}' exists but cannot be retrieved. Please manually delete it from AWS Console and retry.")
+            
             except Exception as retry_error:
                 logger.error(f"Failed to retrieve existing security group: {retry_error}")
+                raise Exception(f"Security group '{group_name}' exists but cannot be retrieved. Please manually delete it from AWS Console (EC2 → Security Groups) and retry.")
         
         logger.error(f"Error creating security group: {error_message}")
         raise Exception(f"Security group error: {error_message}")
