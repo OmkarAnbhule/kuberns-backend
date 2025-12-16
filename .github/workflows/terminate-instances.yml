@@ -1,74 +1,74 @@
-name: Terminate Expired Demo Instances
+# name: Terminate Expired Demo Instances
 
-on:
-  # Run every 5 minutes
-  schedule:
-    - cron: '*/5 * * * *'
+# on:
+#   # Run every 5 minutes
+#   schedule:
+#     - cron: '*/5 * * * *'
   
-  # Allow manual trigger from GitHub Actions tab
-  workflow_dispatch:
+#   # Allow manual trigger from GitHub Actions tab
+#   workflow_dispatch:
 
-jobs:
-  terminate-instances:
-    runs-on: ubuntu-latest
+# jobs:
+#   terminate-instances:
+#     runs-on: ubuntu-latest
     
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
+#       - name: Set up Python
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: '3.12'
       
-      - name: Cache pip packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+#       - name: Cache pip packages
+#         uses: actions/cache@v3
+#         with:
+#           path: ~/.cache/pip
+#           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+#           restore-keys: |
+#             ${{ runner.os }}-pip-
       
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+#       - name: Install dependencies
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip install -r requirements.txt
       
-      - name: Keep Render service alive
-        run: |
-          echo "Pinging Render service to keep it alive..."
-          curl -s https://kuberns-backend.onrender.com/api/openapi.json > /dev/null
-          echo "✓ API pinged successfully"
+#       - name: Keep Render service alive
+#         run: |
+#           echo "Pinging Render service to keep it alive..."
+#           curl -s https://kuberns-backend.onrender.com/api/openapi.json > /dev/null
+#           echo "✓ API pinged successfully"
       
-      - name: Run termination command
-        env:
-          # Django settings
-          SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
-          DEBUG: 'False'
-          ENVIRONMENT: 'production'
+#       - name: Run termination command
+#         env:
+#           # Django settings
+#           SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+#           DEBUG: 'False'
+#           ENVIRONMENT: 'production'
           
-          # Database connection (PostgreSQL)
-          DB_NAME: ${{ secrets.DB_NAME }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_PORT: ${{ secrets.DB_PORT }}
-          DB_SSLMODE: 'prefer'
+#           # Database connection (PostgreSQL)
+#           DB_NAME: ${{ secrets.DB_NAME }}
+#           DB_USER: ${{ secrets.DB_USER }}
+#           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+#           DB_HOST: ${{ secrets.DB_HOST }}
+#           DB_PORT: ${{ secrets.DB_PORT }}
+#           DB_SSLMODE: 'prefer'
           
-          # AWS demo credentials for termination
-          AWS_DEMO_ACCESS_KEY: ${{ secrets.AWS_DEMO_ACCESS_KEY }}
-          AWS_DEMO_SECRET_KEY: ${{ secrets.AWS_DEMO_SECRET_KEY }}
-          AWS_DEMO_REGION: 'us-east-1'
+#           # AWS demo credentials for termination
+#           AWS_DEMO_ACCESS_KEY: ${{ secrets.AWS_DEMO_ACCESS_KEY }}
+#           AWS_DEMO_SECRET_KEY: ${{ secrets.AWS_DEMO_SECRET_KEY }}
+#           AWS_DEMO_REGION: 'us-east-1'
           
-          # Encryption key
-          FIELD_ENCRYPTION_KEY: ${{ secrets.FIELD_ENCRYPTION_KEY }}
+#           # Encryption key
+#           FIELD_ENCRYPTION_KEY: ${{ secrets.FIELD_ENCRYPTION_KEY }}
         
-        run: |
-          python manage.py terminate_expired_instances
+#         run: |
+#           python manage.py terminate_expired_instances
       
-      - name: Summary
-        if: always()
-        run: |
-          echo "✓ Termination job completed at $(date)"
-          echo "Check the logs above for details"
+#       - name: Summary
+#         if: always()
+#         run: |
+#           echo "✓ Termination job completed at $(date)"
+#           echo "Check the logs above for details"
 
